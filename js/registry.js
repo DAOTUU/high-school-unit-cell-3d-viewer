@@ -1,14 +1,14 @@
 const CellRegistry = (() => {
-  const cells = {}
+  const cells = {};
   return {
     register(cell) {
-      cells[cell.id] = cell
+      cells[cell.id] = cell;
     },
     getAll() {
-      return cells
+      return Object.values(cells);
     },
     get(id) {
-      return cells[id]
+      return cells[id];
     }
-  }
-})()
+  };
+})();
