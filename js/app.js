@@ -1,177 +1,153 @@
-// ========== 全局变量 ==========
-let scene, camera, renderer, controls;
-let isRotating = false;
+const scene = new THREE.Scene()
+scene.background = new THREE.Color(0xffffff)
 
-// ========== 1. 初始化 Three.js 场景 ==========
-function initThreeJS() {
-  // 创建场景
-  scene = new THREE.Scene();
-  scene.background = new THREE.Color(0xf0f0f0);
+const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 100)
+const renderer = new THREE.WebGLRenderer({ antialias: true })
+renderer.setSize(innerWidth, innerHeight)
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2))
+document.body.appendChild(renderer.domElement)
 
-  // 创建相机
-  camera = new THREE.PerspectiveCamera(
-    75,
-    window.innerWidth / window.innerHeight,
-    0.1,
-    1000
-  );
-  camera.position.set(5, 5, 5);
+const controls = new THREE.OrbitControls(camera, renderer.domElement)
+controls.enableDamping = true
+controls.dampingFactor = 0.08
+controls.minDistance = 2.5
+controls.maxDistance = 12
 
-  // 创建渲染器
-  renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(window.devicePixelRatio);
-  document.getElementById('view-group').parentNode.appendChild(renderer.domElement);
+const light = new THREE.DirectionalLight(0xffffff, 1.4)
+light.position.set(5, 5, 5)
+scene.add(light)
+scene.add(new THREE.AmbientLight(0xffffff, 0.5))
 
-  // 添加轨道控制器
-  controls = new THREE.OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true;
-  controls.dampingFactor = 0.05;
-  controls.minDistance = 2;
-  controls.maxDistance = 20;
+let atoms = { corner: [], face: [], inner: [] }
+let bonds = []
+let autoRotate = true
+let visible = { corner: true, face: true, inner: true, bond: true }
 
-  // 添加坐标轴辅助（可选）
-  const axesHelper = new THREE.AxesHelper(3);
-  scene.add(axesHelper);
-
-  // 启动动画循环
-  animate();
+function clearAll() {
+  Object.values(atoms).flat().forEach(o => scene.remove(o))
+  bonds.forEach(o => scene.remove(o))
+  atoms = { corner: [], face: [], inner: [] }
+  bonds = []
 }
 
-// ========== 2. 动画循环 ==========
-function animate() {
-  requestAnimationFrame(animate);
-  controls.update();
-  if (isRotating) {
-    scene.rotation.y += 0.01;
-  }
-  renderer.render(scene, camera);
+function drawSphere(group, x, y, z, color) {
+  const g = new THREE.SphereGeometry(0.16, 32, 32)
+  const m = new THREE.MeshPhongMaterial({ color })
+  const mesh = new THREE.Mesh(g, m)
+  mesh.position.set(x, y, z)
+  scene.add(mesh)
+  atoms[group].push(mesh)
 }
 
-// ========== 3. 统一渲染函数：根据晶胞 data 绘制 3D 模型 ==========
-function renderCell(data) {
-  // 清空旧场景（关键！否则新旧模型重叠）
-  while (scene.children.length > 0) {
-    scene.remove(scene.children[0]);
-  }
-  // 重新添加坐标轴辅助
-  scene.add(new THREE.AxesHelper(3));
-
-  // 渲染顶角原子（红色）
-  data.corners?.forEach(pos => {
-    const geo = new THREE.SphereGeometry(0.2, 16, 16);
-    const mat = new THREE.MeshBasicMaterial({ color: 0xff4444 });
-    const sphere = new THREE.Mesh(geo, mat);
-    sphere.position.set(...pos);
-    scene.add(sphere);
-  });
-
-  // 渲染面心原子（黄色）
-  data.faces?.forEach(pos => {
-    const geo = new THREE.SphereGeometry(0.2, 16, 16);
-    const mat = new THREE.MeshBasicMaterial({ color: 0xffcc44 });
-    const sphere = new THREE.Mesh(geo, mat);
-    sphere.position.set(...pos);
-    scene.add(sphere);
-  });
-
-  // 渲染体内原子（绿色）
-  data.inner?.forEach(pos => {
-    const geo = new THREE.SphereGeometry(0.2, 16, 16);
-    const mat = new THREE.MeshBasicMaterial({ color: 0x44cc44 });
-    const sphere = new THREE.Mesh(geo, mat);
-    sphere.position.set(...pos);
-    scene.add(sphere);
-  });
-
-  // 渲染共价键（蓝色线条）
-  data.bonds?.forEach(([p1, p2]) => {
-    const points = [
+function drawBond(p1, p2) {
+  const line = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints([
       new THREE.Vector3(...p1),
       new THREE.Vector3(...p2)
-    ];
-    const geo = new THREE.BufferGeometry().setFromPoints(points);
-    const mat = new THREE.LineBasicMaterial({ color: 0x4488ff, linewidth: 2 });
-    const line = new THREE.Line(geo, mat);
-    scene.add(line);
-  });
+    ]),
+    new THREE.LineBasicMaterial({ color: 0x4488ff })
+  )
+  scene.add(line)
+  bonds.push(line)
 }
 
-// ========== 4. 加载晶胞函数（点击列表项时调用） ==========
-function loadCell(cell) {
-  renderCell(cell.data);
-  // 关闭选择抽屉
-  document.getElementById('drawer-mask').classList.remove('open');
+function drawFrame() {
+  const box = new THREE.BoxGeometry(2, 2, 2)
+  const edges = new THREE.EdgesGeometry(box)
+  const frame = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0xaaaaaa }))
+  scene.add(frame)
+}
+drawFrame()
+
+function loadCell(id) {
+  const cell = CellRegistry.get(id)
+  if (!cell) return
+  clearAll()
+  const d = cell.data
+  d.corners.forEach(p => drawSphere('corner', p[0], p[1], p[2], 0xff4444))
+  d.faces.forEach(p => drawSphere('face', p[0], p[1], p[2], 0xffff44))
+  d.inner.forEach(p => drawSphere('inner', p[0], p[1], p[2], 0x44dd44))
+  d.bonds.forEach(([a, b]) => drawBond(a, b))
+  updateVisibility()
 }
 
-// ========== 5. 初始化交互与列表 ==========
-function initUI() {
-  // 初始化晶胞列表
-  const cells = CellRegistry.getAll();
-  const drawerContent = document.getElementById('drawer-content');
-  drawerContent.innerHTML = '';
-
-  cells.forEach(cell => {
-    const btn = document.createElement('button');
-    btn.className = 'cell-btn';
-    btn.textContent = cell.name;
-    btn.onclick = () => loadCell(cell);
-    drawerContent.appendChild(btn);
-  });
-
-  // 默认加载第一个晶胞
-  if (cells.length > 0) {
-    renderCell(cells[0].data);
-  }
-
-  // 抽屉开关
-  document.getElementById('open-panel').onclick = () => {
-    document.getElementById('drawer-mask').classList.add('open');
-  };
-  document.getElementById('drawer-mask').onclick = (e) => {
-    if (e.target === document.getElementById('drawer-mask')) {
-      document.getElementById('drawer-mask').classList.remove('open');
-    }
-  };
-
-  // 视角控制按钮
-  document.querySelectorAll('.view-btn').forEach(btn => {
-    btn.onclick = () => {
-      const text = btn.textContent;
-      if (text === '视角重置') {
-        camera.position.set(5, 5, 5);
-        controls.reset();
-        scene.rotation.set(0, 0, 0);
-      } else if (text === '主视') {
-        camera.position.set(0, 0, 5);
-        controls.update();
-      } else if (text === '俯视') {
-        camera.position.set(0, 5, 0);
-        controls.update();
-      } else if (text === '侧视') {
-        camera.position.set(5, 0, 0);
-        controls.update();
-      }
-    };
-  });
-
-  // 旋转按钮
-  const rotateBtn = document.querySelector('.rotate-btn');
-  rotateBtn.onclick = () => {
-    isRotating = !isRotating;
-    rotateBtn.style.backgroundColor = isRotating ? '#ff8800' : '#3498db';
-  };
+function updateVisibility() {
+  atoms.corner.forEach(o => o.visible = visible.corner)
+  atoms.face.forEach(o => o.visible = visible.face)
+  atoms.inner.forEach(o => o.visible = visible.inner)
+  bonds.forEach(o => o.visible = visible.bond)
 }
 
-// ========== 6. 页面加载完成后启动 ==========
-window.addEventListener('DOMContentLoaded', () => {
-  initThreeJS();
-  initUI();
-});
+function resetView() { camera.position.set(5, 4, 5); controls.target.set(0, 0, 0) }
+function viewFront() { camera.position.set(0, 0, 5); controls.target.set(0, 0, 0) }
+function viewTop() { camera.position.set(0, 5, 0); controls.target.set(0, 0, 0) }
+function viewLeft() { camera.position.set(5, 0, 0); controls.target.set(0, 0, 0) }
 
-// ========== 窗口 resize 适配 ==========
+function toggleRotate() {
+  autoRotate = !autoRotate
+  document.querySelector('.rotate-btn').textContent = autoRotate ? '旋转 ⟳' : '旋转 ▶'
+}
+
+function toggleGroup(key) {
+  visible[key] = !visible[key]
+  updateVisibility()
+  const btn = [...document.querySelectorAll('.ctrl-btn')].find(b => b.dataset.key === key)
+  btn.classList.toggle('active', visible[key])
+}
+
 window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-});
+  camera.aspect = innerWidth / innerHeight
+  camera.updateProjectionMatrix()
+  renderer.setSize(innerWidth, innerHeight)
+})
+
+function loop() {
+  requestAnimationFrame(loop)
+  if (autoRotate && !controls.isDragging) scene.rotation.y += 0.002
+  controls.update()
+  renderer.render(scene, camera)
+}
+
+const drawerMask = document.getElementById('drawer-mask')
+const openBtn = document.getElementById('open-panel')
+const drawerContent = document.getElementById('drawer-content')
+
+openBtn.onclick = () => {
+  drawerMask.style.display = 'block'
+  openBtn.style.display = 'none'
+}
+drawerMask.onclick = (e) => {
+  if (e.target === drawerMask) {
+    drawerMask.style.display = 'none'
+    openBtn.style.display = 'block'
+  }
+}
+
+document.querySelectorAll('.view-btn')[0].onclick = resetView
+document.querySelectorAll('.view-btn')[1].onclick = viewFront
+document.querySelectorAll('.view-btn')[2].onclick = viewTop
+document.querySelectorAll('.view-btn')[3].onclick = viewLeft
+document.querySelectorAll('.view-btn')[4].onclick = toggleRotate
+
+document.querySelectorAll('.ctrl-btn').forEach(btn => {
+  const key = btn.dataset.key
+  btn.onclick = () => toggleGroup(key)
+  btn.classList.add('active')
+})
+
+const cells = CellRegistry.getAll()
+for (const id in cells) {
+  const el = document.createElement('div')
+  el.className = 'cell-item'
+  el.textContent = cells[id].name
+  el.onclick = () => {
+    loadCell(id)
+    drawerMask.style.display = 'none'
+    openBtn.style.display = 'block'
+  }
+  drawerContent.appendChild(el)
+}
+
+loadCell('diamond')
+resetView()
+loop()
