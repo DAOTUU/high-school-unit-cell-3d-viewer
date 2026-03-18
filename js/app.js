@@ -51,12 +51,9 @@ function animate() {
 // ========== 3. 统一渲染函数：根据晶胞 data 绘制 3D 模型 ==========
 function renderCell(data) {
   // 清空旧场景（关键！否则新旧模型重叠）
-  const toRemove = [];
-  scene.traverse(child => {
-    if (child.isMesh || child.isLine) toRemove.push(child);
-  });
-  toRemove.forEach(child => scene.remove(child));
-
+  while (scene.children.length > 0) {
+    scene.remove(scene.children[0]);
+  }
   // 重新添加坐标轴辅助
   scene.add(new THREE.AxesHelper(3));
 
@@ -103,8 +100,6 @@ function renderCell(data) {
 // ========== 4. 加载晶胞函数（点击列表项时调用） ==========
 function loadCell(cell) {
   renderCell(cell.data);
-  controls.reset();
-  scene.rotation.set(0, 0, 0);
   // 关闭选择抽屉
   document.getElementById('drawer-mask').classList.remove('open');
 }
