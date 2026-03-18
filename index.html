@@ -1,39 +1,44 @@
 <!DOCTYPE html>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>3D晶胞可视化工具</title>
-<link rel="stylesheet" href="style.css">
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D晶胞可视化工具</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="color-info">
+    🔴 顶角 | 🟡 面心 | 🟢 体内 | 🔗 共价键
+  </div>
 
-<div id="color-info">
-  🔴 顶角 | 🟡 面心 | 🟢 体内 | 🔗 共价键
-</div>
+  <button id="open-panel">选择晶胞</button>
+  <div id="drawer-mask">
+    <div id="drawer-content"></div>
+  </div>
 
-<button id="open-panel">选择晶胞</button>
+  <div id="control-group">
+    <button class="ctrl-btn" data-key="corner">显示顶角</button>
+    <button class="ctrl-btn" data-key="face">显示面心</button>
+    <button class="ctrl-btn" data-key="inner">显示体内</button>
+    <button class="ctrl-btn" data-key="bond">显示键</button>
+  </div>
 
-<div id="drawer-mask">
-  <div id="drawer-content"></div>
-</div>
+  <div id="view-group">
+    <button class="view-btn">视角重置</button>
+    <button class="view-btn">主视</button>
+    <button class="view-btn">俯视</button>
+    <button class="view-btn">侧视</button>
+    <button class="view-btn rotate-btn">旋转 ♻</button>
+  </div>
 
-<div id="control-group">
-  <button class="ctrl-btn" data-key="corner">显示顶角</button>
-  <button class="ctrl-btn" data-key="face">显示面心</button>
-  <button class="ctrl-btn" data-key="inner">显示体内</button>
-  <button class="ctrl-btn" data-key="bond">显示键</button>
-</div>
-
-<div id="view-group">
-  <button class="view-btn">视角重置</button>
-  <button class="view-btn">主视</button>
-  <button class="view-btn">俯视</button>
-  <button class="view-btn">侧视</button>
-  <button class="view-btn rotate-btn">旋转 ⟳</button>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/three@0.136.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.136.0/examples/js/controls/OrbitControls.js"></script>
-<script src="js/registry.js"></script>
-<script src="js/app.js"></script>
-<script src="js/cells/diamond.js"></script>
-<script src="js/cells/simple.js"></script>
-<script src="js/cells/bcc.js"></script>
-<script src="js/cells/fcc.js"></script>
+  <!-- 加载顺序：Three.js → registry.js → 晶胞文件 → app.js -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.136.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.136.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="js/registry.js"></script>
+  <script src="js/cells/diamond.js"></script>
+  <script src="js/cells/simple.js"></script>
+  <script src="js/cells/bcc.js"></script>
+  <script src="js/cells/fcc.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
