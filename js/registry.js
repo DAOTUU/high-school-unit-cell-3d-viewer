@@ -5,7 +5,7 @@ const CellRegistry = (() => {
       cells[cell.id] = cell;
     },
     getAll() {
-      return Object.values(cells);
+      return cells;
     },
     get(id) {
       return cells[id];
