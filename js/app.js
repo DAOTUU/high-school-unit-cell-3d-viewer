@@ -20,7 +20,7 @@ scene.add(new THREE.AmbientLight(0xffffff, 0.5))
 
 let atoms = { corner: [], face: [], inner: [] }
 let bonds = []
-let autoRotate = true
+let autoRotate = false
 let visible = { corner: true, face: true, inner: true, bond: true }
 
 function clearAll() {
